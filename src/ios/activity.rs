@@ -5,7 +5,6 @@ use chrono::Timelike;
 use rusqlite::Connection;
 use serde::Serialize;
 use serde_json::json;
-use std::collections::HashMap;
 
 // Struct representing iOS activity push token
 #[derive(Serialize)]
@@ -58,51 +57,8 @@ pub fn check_token_format(key: &str) -> bool {
     true
 }
 
-// Handler for GET /ios/activity?token={String}
-pub async fn get_ios_activity(query: web::Query<HashMap<String, String>>) -> impl Responder {
-    let token = match query.get("token") {
-        Some(token) => token,
-        None => {
-            return HttpResponse::BadRequest().body("Token not found");
-        }
-    };
-
-    if !check_token_format(token) {
-        return HttpResponse::BadRequest().body("Invalid token format");
-    }
-
-    let conn = conn_db_ios_activity_push_token();
-    let mut ios_token = IosActivityPushToken {
-        last_date: String::from(""),
-        push_token: String::from(""),
-    };
-
-    {
-        let mut stmt = conn
-            .prepare("SELECT lastDate, pushToken FROM ios_activity_push_token WHERE pushToken = ?")
-            .unwrap();
-        let mut rows = stmt.query(&[token]).unwrap();
-
-        while let Some(row) = rows.next().unwrap() {
-            ios_token = IosActivityPushToken {
-                last_date: row.get(0).unwrap(),
-                push_token: row.get(1).unwrap(),
-            };
-        }
-    }
-
-    conn.close().unwrap();
-
-    if ios_token.push_token == "" {
-        return HttpResponse::NotFound().body("Token not found");
-    }
-
-    HttpResponse::Ok().body(serde_json::to_string(&ios_token).unwrap())
-}
-
-// Handler for POST /ios/activity/<push_token>
-// If push_token is already in the database, update last_date, otherwise insert
-pub async fn post_ios_acitvity(path: web::Path<String>) -> impl Responder {
+// Handler for GET /ios/activity/<push_token>
+pub async fn get_ios_activity(path: web::Path<String>) -> impl Responder {
     let token = path.into_inner();
 
     if !check_token_format(&token) {
@@ -110,6 +66,7 @@ pub async fn post_ios_acitvity(path: web::Path<String>) -> impl Responder {
     }
 
     let conn = conn_db_ios_activity_push_token();
+
     let mut ios_token = IosActivityPushToken {
         last_date: String::from(""),
         push_token: String::from(""),
@@ -127,39 +84,85 @@ pub async fn post_ios_acitvity(path: web::Path<String>) -> impl Responder {
                 push_token: row.get(1).unwrap(),
             };
         }
+    }
 
-        if ios_token.push_token == "" {
-            conn.execute(
-                "INSERT INTO ios_activity_push_token (lastDate, pushToken) VALUES (datetime('now'), ?)",
-                &[&token],
-            )
+    let result = json!({
+        "last_date": ios_token.last_date,
+        "push_token": ios_token.push_token,
+    });
+
+    HttpResponse::Ok().body(serde_json::to_string(&result).unwrap())
+}
+
+// Handler for POST /ios/activity/<push_token>
+// If push_token is already in the database return BadRequest, otherwise insert to database
+pub async fn post_ios_acitvity(path: web::Path<String>) -> impl Responder {
+    let token = path.into_inner();
+
+    if !check_token_format(&token) {
+        return HttpResponse::BadRequest().body("Invalid token format");
+    }
+
+    let conn = conn_db_ios_activity_push_token();
+
+    let mut ios_token = IosActivityPushToken {
+        last_date: String::from(""),
+        push_token: String::from(""),
+    };
+
+    {
+        let mut stmt = conn
+            .prepare("SELECT lastDate, pushToken FROM ios_activity_push_token WHERE pushToken = ?")
             .unwrap();
+        let mut rows = stmt.query(&[&token]).unwrap();
 
-            let mut stmt2 = conn
-                .prepare(
-                    "SELECT lastDate, pushToken FROM ios_activity_push_token WHERE pushToken = ?",
-                )
-                .unwrap();
-            let mut rows2 = stmt2.query(&[&token]).unwrap();
-
-            while let Some(row) = rows2.next().unwrap() {
-                ios_token = IosActivityPushToken {
-                    last_date: row.get(0).unwrap(),
-                    push_token: row.get(1).unwrap(),
-                };
-            }
-        } else {
-            conn.execute(
-                "UPDATE ios_activity_push_token SET lastDate = datetime('now') WHERE pushToken = ?",
-                &[&token],
-            )
-            .unwrap();
+        while let Some(row) = rows.next().unwrap() {
+            ios_token = IosActivityPushToken {
+                last_date: row.get(0).unwrap(),
+                push_token: row.get(1).unwrap(),
+            };
         }
     }
 
+    if ios_token.push_token != "" {
+        return HttpResponse::BadRequest().body("Token already exists");
+    }
+
+    conn.execute(
+        "INSERT INTO ios_activity_push_token (lastDate, pushToken) VALUES (datetime('now'), ?)",
+        &[&token],
+    )
+    .unwrap();
+
     conn.close().unwrap();
 
-    HttpResponse::Ok().body(serde_json::to_string(&ios_token).unwrap())
+    let result = json!({
+        "last_date": chrono::Local::now().to_string(),
+        "push_token": token,
+    });
+
+    HttpResponse::Ok().body(serde_json::to_string(&result).unwrap())
+}
+
+// Handler for DELETE /ios/activity/<push_token>
+pub async fn delete_ios_activity(path: web::Path<String>) -> impl Responder {
+    let token = path.into_inner();
+
+    if !check_token_format(&token) {
+        return HttpResponse::BadRequest().body("Invalid token format");
+    }
+
+    let conn = conn_db_ios_activity_push_token();
+
+    conn.execute(
+        "DELETE FROM ios_activity_push_token WHERE pushToken = ?",
+        &[&token],
+    )
+    .unwrap();
+
+    conn.close().unwrap();
+
+    HttpResponse::Ok().body("Token deleted")
 }
 
 /*

@@ -11,13 +11,10 @@ pub struct IosActivityKey {
 
 pub fn ios_config(cfg: &mut web::ServiceConfig) {
     cfg.service(
-        web::resource("/activity")
-            .route(web::get().to(activity::get_ios_activity))
-            .route(web::head().to(|| HttpResponse::MethodNotAllowed())),
-    )
-    .service(
         web::resource("/activity/{token}")
+            .route(web::get().to(activity::get_ios_activity))
             .route(web::post().to(activity::post_ios_acitvity))
+            .route(web::delete().to(activity::delete_ios_activity))
             .route(web::head().to(|| HttpResponse::MethodNotAllowed())),
     );
 }
