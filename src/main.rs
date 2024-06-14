@@ -1,17 +1,23 @@
-use actix_web::{get, http::StatusCode, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
-#[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::build(StatusCode::OK)
-        .content_type("text/html; charset=utf-8")
-        .body("dimigomeal push notification server")
+mod ios;
+
+use ios::ios_config;
+
+fn index_config(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::scope("/ios").configure(ios_config))
+        .route("/", web::get().to(index_handler));
+}
+
+async fn index_handler() -> impl Responder {
+    HttpResponse::Ok().body("dimigomeal push notification server")
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     println!("Starting Actix web server...");
 
-    HttpServer::new(move || App::new().service(index))
+    HttpServer::new(move || App::new().configure(index_config))
         .bind(("0.0.0.0", 8080))?
         .run()
         .await
