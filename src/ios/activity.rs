@@ -179,7 +179,7 @@ pub fn activity_cron(authentication_token: &str) {
     {
         let mut stmt = conn
             .prepare(
-                "DELETE FROM ios_activity_push_token WHERE lastDate < datetime('now', '-12 hours')",
+                "DELETE FROM ios_activity_push_token WHERE lastDate < datetime('now', '-8 hours')",
             )
             .unwrap();
         stmt.execute([]).unwrap();
