@@ -130,13 +130,7 @@ pub async fn post_ios_acitvity(path: web::Path<String>) -> impl Responder {
 
         if ios_token.push_token == "" {
             conn.execute(
-            "INSERT INTO ios_activity_push_token (lastDate, pushToken) VALUES (datetime('now'), ?)",
-            &[&token],
-        )
-        .unwrap();
-        } else {
-            conn.execute(
-                "UPDATE ios_activity_push_token SET lastDate = datetime('now') WHERE pushToken = ?",
+                "INSERT INTO ios_activity_push_token (lastDate, pushToken) VALUES (datetime('now'), ?)",
                 &[&token],
             )
             .unwrap();
@@ -154,6 +148,12 @@ pub async fn post_ios_acitvity(path: web::Path<String>) -> impl Responder {
                     push_token: row.get(1).unwrap(),
                 };
             }
+        } else {
+            conn.execute(
+                "UPDATE ios_activity_push_token SET lastDate = datetime('now') WHERE pushToken = ?",
+                &[&token],
+            )
+            .unwrap();
         }
     }
 
@@ -179,7 +179,7 @@ pub fn activity_cron(authentication_token: &str) {
     {
         let mut stmt = conn
             .prepare(
-                "DELETE FROM ios_activity_push_token WHERE lastDate < datetime('now', '-8 hours')",
+                "DELETE FROM ios_activity_push_token WHERE lastDate < datetime('now', '-12 hours')",
             )
             .unwrap();
         stmt.execute([]).unwrap();
@@ -304,7 +304,7 @@ pub fn send_activity_notification(
         .header("apns-expiration", "0")
         .json(&data)
         .send()
-        .unwrap();
+        .expect("Failed to send push notification");
 
     println!("{:?}", res);
 }
