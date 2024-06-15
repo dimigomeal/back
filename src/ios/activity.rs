@@ -1,6 +1,6 @@
-use actix_web::web;
-use actix_web::HttpResponse;
-use actix_web::Responder;
+use std::io::Error;
+use std::io::ErrorKind;
+
 use chrono::Timelike;
 use rusqlite::Connection;
 use serde::Serialize;
@@ -25,47 +25,29 @@ pub struct Meal {
 }
 
 // Establishes a connection to the iOS activity push token database
-pub fn conn_db_ios_activity_push_token() -> Connection {
+pub async fn conn_db_ios_activity_push_token() -> Result<Connection, Error> {
     let db_path = "./db.db3";
-    let conn = Connection::open(db_path).unwrap();
+    let conn: Connection;
 
-    // Create the table if it doesn't exist
-    conn.execute(
-        "CREATE TABLE IF NOT EXISTS ios_activity_push_token (
+    {
+        conn = Connection::open(db_path).unwrap();
+
+        // Create the table if it doesn't exist
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ios_activity_push_token (
             lastDate TEXT,
             pushToken TEXT PRIMARY KEY
         )",
-        [],
-    )
-    .unwrap();
+            [],
+        )
+        .unwrap();
+    }
 
-    conn
+    Ok(conn)
 }
 
-// Checks if the token format is valid
-pub fn check_token_format(key: &str) -> bool {
-    if key.len() != 256 {
-        return false;
-    }
-
-    for c in key.chars() {
-        if !c.is_ascii_alphanumeric() {
-            return false;
-        }
-    }
-
-    true
-}
-
-// Handler for GET /ios/activity/<push_token>
-pub async fn get_ios_activity(path: web::Path<String>) -> impl Responder {
-    let token = path.into_inner();
-
-    if !check_token_format(&token) {
-        return HttpResponse::BadRequest().body("Invalid token format");
-    }
-
-    let conn = conn_db_ios_activity_push_token();
+pub async fn get_push_token_data(token: String) -> Result<IosActivityPushToken, Error> {
+    let conn = conn_db_ios_activity_push_token().await.unwrap();
 
     let mut ios_token = IosActivityPushToken {
         last_date: String::from(""),
@@ -86,24 +68,14 @@ pub async fn get_ios_activity(path: web::Path<String>) -> impl Responder {
         }
     }
 
-    let result = json!({
-        "last_date": ios_token.last_date,
-        "push_token": ios_token.push_token,
-    });
+    conn.close().unwrap();
 
-    HttpResponse::Ok().body(serde_json::to_string(&result).unwrap())
+    Ok(ios_token)
 }
 
-// Handler for POST /ios/activity/<push_token>
 // If push_token is already in the database return BadRequest, otherwise insert to database
-pub async fn post_ios_acitvity(path: web::Path<String>) -> impl Responder {
-    let token = path.into_inner();
-
-    if !check_token_format(&token) {
-        return HttpResponse::BadRequest().body("Invalid token format");
-    }
-
-    let conn = conn_db_ios_activity_push_token();
+pub async fn add_new_push_token(token: String) -> Result<IosActivityPushToken, Error> {
+    let conn = conn_db_ios_activity_push_token().await.unwrap();
 
     let mut ios_token = IosActivityPushToken {
         last_date: String::from(""),
@@ -125,7 +97,8 @@ pub async fn post_ios_acitvity(path: web::Path<String>) -> impl Responder {
     }
 
     if ios_token.push_token != "" {
-        return HttpResponse::BadRequest().body("Token already exists");
+        conn.close().unwrap();
+        return Err(Error::new(ErrorKind::Other, "Token already exists"));
     }
 
     conn.execute(
@@ -136,23 +109,16 @@ pub async fn post_ios_acitvity(path: web::Path<String>) -> impl Responder {
 
     conn.close().unwrap();
 
-    let result = json!({
-        "last_date": chrono::Local::now().to_string(),
-        "push_token": token,
-    });
+    let result = IosActivityPushToken {
+        last_date: chrono::Local::now().to_string(),
+        push_token: token,
+    };
 
-    HttpResponse::Ok().body(serde_json::to_string(&result).unwrap())
+    Ok(result)
 }
 
-// Handler for DELETE /ios/activity/<push_token>
-pub async fn delete_ios_activity(path: web::Path<String>) -> impl Responder {
-    let token = path.into_inner();
-
-    if !check_token_format(&token) {
-        return HttpResponse::BadRequest().body("Invalid token format");
-    }
-
-    let conn = conn_db_ios_activity_push_token();
+pub async fn delete_push_token(token: String) -> Result<bool, Error> {
+    let conn = conn_db_ios_activity_push_token().await.unwrap();
 
     conn.execute(
         "DELETE FROM ios_activity_push_token WHERE pushToken = ?",
@@ -162,7 +128,7 @@ pub async fn delete_ios_activity(path: web::Path<String>) -> impl Responder {
 
     conn.close().unwrap();
 
-    HttpResponse::Ok().body("Token deleted")
+    Ok(true)
 }
 
 /*
@@ -175,9 +141,9 @@ pub async fn delete_ios_activity(path: web::Path<String>) -> impl Responder {
     --data '{"aps":{"event":"update","content-state":{"type":"<breakfast | lunch | dinner>","meal":"<MEALDATA>","date":"<current YYYY-MM-DD>"},"timestamp":'$(date +%s)'}}' \
     --http2  https://api.development.push.apple.com:443/3/device/${PUSH_TOKEN}
 */
-pub fn activity_cron(authentication_token: &str) {
+pub async fn activity_cron(authentication_token: &str) -> Result<(), Error> {
     // 1. Remove all tokens that have not been updated for 8 hours
-    let conn = conn_db_ios_activity_push_token();
+    let conn = conn_db_ios_activity_push_token().await.unwrap();
 
     {
         let mut stmt = conn
@@ -264,22 +230,26 @@ pub fn activity_cron(authentication_token: &str) {
             meal_type,
             &serde_json::to_string(&meal_data).unwrap(),
             &date.format("%Y-%m-%d").to_string(),
-        );
+        )
+        .await
+        .unwrap();
     }
 
     conn.close().unwrap();
 
     println!("Cron job done");
+
+    Ok(())
 }
 
 // Sends a push notification
-pub fn send_activity_notification(
+pub async fn send_activity_notification(
     authentication_token: &str,
     push_token: &str,
     meal_type: &str,
     meal_data: &str,
     date: &str,
-) {
+) -> Result<(), Error> {
     let client = reqwest::blocking::Client::new();
     let url = format!(
         "https://api.development.push.apple.com/3/device/{}",
@@ -310,4 +280,6 @@ pub fn send_activity_notification(
         .expect("Failed to send push notification");
 
     println!("{:?}", res);
+
+    Ok(())
 }
