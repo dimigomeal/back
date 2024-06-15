@@ -1,6 +1,7 @@
 mod command;
 mod func;
 mod ios;
+mod meal;
 mod server;
 
 use std::io;

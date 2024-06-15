@@ -5,26 +5,36 @@ use std::{io, process};
 pub async fn debug_command() -> io::Result<()> {
     let target = func::get_arg(2);
     match target.as_str() {
-        "push-notify" => {
-            println!("Push notification debug...");
+        "ios-activity" => {
+            println!("Start debug for ios activity");
 
-            let auth_token = func::get_arg(3);
-            let target = func::get_arg(4);
+            let private_key = func::get_arg(3);
+            let device_token = func::get_arg(4);
             let meal_type = func::get_arg(5);
             let menu = func::get_arg(6);
             let date = func::get_arg(7);
 
-            if auth_token == "" || target == "" || meal_type == "" || menu == "" || date == "" {
+            if private_key == ""
+                || device_token == ""
+                || meal_type == ""
+                || menu == ""
+                || date == ""
+            {
                 println!("All arguments are required for push notification debug");
                 process::exit(1);
             }
 
-            let result =
-                activity::send_custom_notification(&auth_token, &target, &meal_type, &menu, &date)
-                    .await
-                    .unwrap();
+            let result = activity::send_custom_activity(
+                &private_key,
+                &device_token,
+                &meal_type,
+                &menu,
+                &date,
+            )
+            .await
+            .unwrap();
 
-            println!("Push notification sent: {:?}", result);
+            println!("End debug for ios activity: {:?}", result);
             Ok(())
         }
         "--help" => {
@@ -32,10 +42,10 @@ pub async fn debug_command() -> io::Result<()> {
             println!("");
             println!("Commands:");
             println!(
-                "  push-notify <auth_token> <target> <type> <menu> <date>    Force push notification to target"
+                "  ios-activity <private_key> <device_token> <type> <menu> <date>    Force push notification to device_token"
             );
             println!(
-                "  --help                                               Display this help message"
+                "  --help                                                            Display this help message"
             );
             Ok(())
         }
