@@ -14,6 +14,11 @@ pub async fn debug_command() -> io::Result<()> {
             let menu = func::get_arg(6);
             let date = func::get_arg(7);
 
+            if auth_token == "" || target == "" || meal_type == "" || menu == "" || date == "" {
+                println!("All arguments are required for push notification debug");
+                process::exit(1);
+            }
+
             let result =
                 activity::send_custom_notification(&auth_token, &target, &meal_type, &menu, &date)
                     .await
