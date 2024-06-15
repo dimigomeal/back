@@ -1,0 +1,6 @@
+#
+
+0 */3 * * * cd / && /usr/local/bin/dimigomeal-back cron meal > /proc/1/fd/1 2>/proc/1/fd/2
+*/1 * * * * cd / && /usr/local/bin/dimigomeal-back cron ios-activity "$(cat './ios-activity.p8' | tr -d '\n')" > /proc/1/fd/1 2>/proc/1/fd/2
+
+#

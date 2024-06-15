@@ -1,0 +1,30 @@
+stages:
+  - check
+  - build
+  - deploy
+
+check-job:
+  stage: check
+  script:
+    - docker info
+
+build-job:
+  stage: build
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker build -t $CI_REGISTRY_IMAGE .
+    - docker push $CI_REGISTRY_IMAGE
+
+deploy-job:
+  stage: deploy
+  script:
+    - docker rm -f $CI_PROJECT_PATH_SLUG || true
+    - >
+      docker create
+      --name $CI_PROJECT_PATH_SLUG
+      --restart always
+      --network proxy
+      --volume /mnt/docker/services/dimigomeal/db.db3:/db.db3
+      --volume /mnt/docker/services/dimigomeal/ios-activity.p8:/ios-activity.p8:ro
+      $CI_REGISTRY_IMAGE:latest
+    - docker start $CI_PROJECT_PATH_SLUG
