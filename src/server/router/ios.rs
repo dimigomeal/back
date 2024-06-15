@@ -16,7 +16,7 @@ pub struct IosActivityPushToken {
 
 // Checks if the token format is valid
 pub fn check_token_format(key: &str) -> bool {
-    if key.len() != 160 {
+    if key.len() != 256 {
         return false;
     }
 
