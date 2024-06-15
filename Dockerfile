@@ -12,4 +12,4 @@ RUN apt-get update && apt-get install -y cron
 COPY cron /etc/cron.d/cron
 RUN crontab /etc/cron.d/cron
 
-CMD ["dimigomeal-back", "run"]
+CMD ["service", "cron", "start", ";", "dimigomeal-back", "run"]
