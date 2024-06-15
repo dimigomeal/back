@@ -12,4 +12,6 @@ RUN apt-get update && apt-get install -y cron
 COPY cron /etc/cron.d/cron
 RUN crontab /etc/cron.d/cron
 
-CMD ["dimigomeal-back", "run"]
+COPY run.sh /run.sh
+
+CMD ["sh", "run.sh"]
