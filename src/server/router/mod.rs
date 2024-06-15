@@ -1,13 +1,6 @@
 use actix_web::{web, HttpResponse};
-use serde::Serialize;
 
 pub mod ios;
-
-#[derive(Serialize)]
-pub struct IosActivityKey {
-    pub last_date: String,
-    pub activity_key: String,
-}
 
 pub fn ios_config(cfg: &mut web::ServiceConfig) {
     cfg.service(

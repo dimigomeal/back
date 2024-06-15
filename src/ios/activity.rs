@@ -131,30 +131,21 @@ pub async fn delete_push_token(token: String) -> Result<bool, Error> {
     Ok(true)
 }
 
-/*
-    curl -v \
-    --header "authorization: bearer ${AUTHENTICATION_TOKEN}" \
-    --header "apns-topic: kr.isamin.dimigomeal.push-type.liveactivity" \
-    --header "apns-push-type: liveactivity" \
-    --header "apns-priority: 10" \
-    --header "apns-expiration: 0" \
-    --data '{"aps":{"event":"update","content-state":{"type":"<breakfast | lunch | dinner>","meal":"<MEALDATA>","date":"<current YYYY-MM-DD>"},"timestamp":'$(date +%s)'}}' \
-    --http2  https://api.development.push.apple.com:443/3/device/${PUSH_TOKEN}
-*/
-pub async fn activity_cron(authentication_token: &str) -> Result<(), Error> {
-    // 1. Remove all tokens that have not been updated for 8 hours
+async fn remove_old_push_tokens() -> Result<(), Error> {
     let conn = conn_db_ios_activity_push_token().await.unwrap();
 
-    {
-        let mut stmt = conn
-            .prepare(
-                "DELETE FROM ios_activity_push_token WHERE lastDate < datetime('now', '-8 hours')",
-            )
-            .unwrap();
-        stmt.execute([]).unwrap();
-    }
+    conn.execute(
+        "DELETE FROM ios_activity_push_token WHERE lastDate < datetime('now', '-8 hours')",
+        [],
+    )
+    .unwrap();
 
-    // 2. Set meal type & date based on current time
+    conn.close().unwrap();
+
+    Ok(())
+}
+
+fn get_current_target_date() -> (String, String) {
     // 0am ~ 8:40am -> breakfast
     // 8:31am ~ 1:50pm -> lunch
     // 1:41pm ~ 7:50pm -> dinner
@@ -179,7 +170,12 @@ pub async fn activity_cron(authentication_token: &str) -> Result<(), Error> {
         date += chrono::Duration::days(1);
     };
 
-    // 3. Get meal data from database
+    (meal_type.to_string(), date.format("%Y-%m-%d").to_string())
+}
+
+pub async fn get_meal_data(date: &str) -> Result<Meal, Error> {
+    let conn = conn_db_ios_activity_push_token().await.unwrap();
+    // Get meal data from database
     let mut meal_data = Meal {
         idx: 0,
         id: 0,
@@ -191,7 +187,7 @@ pub async fn activity_cron(authentication_token: &str) -> Result<(), Error> {
 
     {
         let mut stmt = conn.prepare("SELECT * FROM meals WHERE date = ?").unwrap();
-        let mut rows = stmt.query(&[&date.format("%Y-%m-%d").to_string()]).unwrap();
+        let mut rows = stmt.query(&[&date]).unwrap();
 
         while let Some(row) = rows.next().unwrap() {
             meal_data = Meal {
@@ -205,7 +201,33 @@ pub async fn activity_cron(authentication_token: &str) -> Result<(), Error> {
         }
     }
 
+    conn.close().unwrap();
+
+    Ok(meal_data)
+}
+
+/*
+    curl -v \
+    --header "authorization: bearer ${AUTHENTICATION_TOKEN}" \
+    --header "apns-topic: kr.isamin.dimigomeal.push-type.liveactivity" \
+    --header "apns-push-type: liveactivity" \
+    --header "apns-priority: 10" \
+    --header "apns-expiration: 0" \
+    --data '{"aps":{"event":"update","content-state":{"type":"<breakfast | lunch | dinner>","meal":"<MEALDATA>","date":"<current YYYY-MM-DD>"},"timestamp":'$(date +%s)'}}' \
+    --http2  https://api.development.push.apple.com:443/3/device/${PUSH_TOKEN}
+*/
+pub async fn activity_cron(authentication_token: &str) -> Result<(), Error> {
+    // 1. Remove all tokens that have not been updated for 8 hours
+    remove_old_push_tokens().await.unwrap();
+
+    // 2. Set meal type & date based on current time
+    let (meal_type, date) = get_current_target_date();
+
+    // 3. Get meal data from database
+    let meal_data = get_meal_data(&date).await.unwrap();
+
     // 4. Get all push tokens from database
+    let conn = conn_db_ios_activity_push_token().await.unwrap();
     let mut ios_tokens: Vec<IosActivityPushToken> = Vec::new();
 
     {
@@ -227,9 +249,9 @@ pub async fn activity_cron(authentication_token: &str) -> Result<(), Error> {
         send_activity_notification(
             authentication_token,
             &ios_token.push_token,
-            meal_type,
+            meal_type.as_str(),
             &serde_json::to_string(&meal_data).unwrap(),
-            &date.format("%Y-%m-%d").to_string(),
+            &date,
         )
         .await
         .unwrap();
@@ -240,6 +262,16 @@ pub async fn activity_cron(authentication_token: &str) -> Result<(), Error> {
     println!("Cron job done");
 
     Ok(())
+}
+
+pub async fn send_custom_notification(
+    authentication_token: &str,
+    push_token: &str,
+    meal_type: &str,
+    meal_data: &str,
+    date: &str,
+) -> Result<(), Error> {
+    send_activity_notification(authentication_token, push_token, meal_type, meal_data, date).await
 }
 
 // Sends a push notification
@@ -261,7 +293,7 @@ pub async fn send_activity_notification(
             "event": "update",
             "content-state": {
                 "type": meal_type,
-                "meal": meal_data,
+                "menu": meal_data,
                 "date": date,
             },
             "timestamp": chrono::Local::now().timestamp(),

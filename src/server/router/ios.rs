@@ -72,3 +72,13 @@ pub async fn delete_ios_activity(path: web::Path<String>) -> impl Responder {
 
     HttpResponse::Ok().body("Token deleted")
 }
+
+// add FromRequest for ForcePushBody
+#[derive(Serialize)]
+pub struct ForcePushBody {
+    pub authentication_token: &'static str,
+    pub push_token: &'static str,
+    pub meal_type: &'static str,
+    pub meal_data: &'static str,
+    pub date: &'static str,
+}
