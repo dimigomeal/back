@@ -5,6 +5,7 @@ COPY . .
 RUN cargo build --release
 
 FROM debian:bullseye
+ENV TZ="Asia/Seoul"
 
 COPY --from=builder /usr/src/dimigomeal-back/target/release/dimigomeal-back /usr/local/bin/dimigomeal-back
 
