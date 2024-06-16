@@ -1,11 +1,11 @@
+use chrono::Timelike;
+use chrono_tz::Asia::Seoul;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use rusqlite::Connection;
+use serde::Serialize;
 use serde_json::json;
 use std::io::Error;
 use std::io::ErrorKind;
-
-use chrono::Timelike;
-use rusqlite::Connection;
-use serde::Serialize;
 
 use crate::func;
 use crate::meal;
@@ -103,7 +103,7 @@ pub async fn add_device_token(token: String) -> Result<IosActivityDeviceToken, E
     conn.close().unwrap();
 
     let result = IosActivityDeviceToken {
-        created_date: chrono::Local::now().to_string(),
+        created_date: chrono::Utc::now().with_timezone(&Seoul).to_string(),
         device_token: token,
     };
 
@@ -139,9 +139,9 @@ async fn remove_old_device_tokens() -> Result<(), Error> {
 }
 
 fn get_current() -> (String, String) {
-    let mut date = chrono::Local::now();
+    let mut date = chrono::Utc::now().with_timezone(&Seoul);
 
-    let now = chrono::Local::now();
+    let now = chrono::Utc::now().with_timezone(&Seoul);
     let now_hour = now.hour();
     let now_minute = now.minute();
     let total_minutes = now_hour * 60 + now_minute;

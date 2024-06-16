@@ -1,12 +1,12 @@
+use crate::meal::get_meal;
+use crate::meal::get_meal_week;
 use actix_web::web;
 use actix_web::HttpResponse;
 use actix_web::Responder;
+use chrono_tz::Asia::Seoul;
 use regex::Regex;
 use serde_json::json;
 use std::sync::Arc;
-
-use crate::meal::get_meal;
-use crate::meal::get_meal_week;
 
 pub fn check_date_format(date: &str) -> bool {
     let date_regex =
@@ -42,7 +42,10 @@ pub async fn get_meal_date(path: web::Path<String>) -> impl Responder {
 }
 
 pub async fn get_meal_today() -> impl Responder {
-    let date = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let date = chrono::Utc::now()
+        .with_timezone(&Seoul)
+        .format("%Y-%m-%d")
+        .to_string();
 
     get_meal_date(web::Path::from(date)).await
 }
@@ -73,7 +76,10 @@ pub async fn get_meal_week_date(path: web::Path<String>) -> impl Responder {
 }
 
 pub async fn get_meal_week_today() -> impl Responder {
-    let date = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let date = chrono::Utc::now()
+        .with_timezone(&Seoul)
+        .format("%Y-%m-%d")
+        .to_string();
 
     get_meal_week_date(web::Path::from(date)).await
 }
