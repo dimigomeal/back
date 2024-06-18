@@ -14,8 +14,8 @@ pub fn ios_config(cfg: &mut web::ServiceConfig) {
 }
 
 pub fn meal_config(cfg: &mut web::ServiceConfig) {
-    cfg.service(web::resource("").route(web::get().to(meal::get_meal_today)));
-    cfg.service(web::resource("/week").route(web::get().to(meal::get_meal_week_today)));
-    cfg.service(web::resource("/{date}").route(web::get().to(meal::get_meal_date)));
-    cfg.service(web::resource("/week/{date}").route(web::get().to(meal::get_meal_week_date)));
+    cfg.service(web::resource("").route(web::get().to(meal::get_meal_today)))
+        .service(web::resource("/week").route(web::get().to(meal::get_meal_week_today)))
+        .service(web::resource("/{date}").route(web::get().to(meal::get_meal_date)))
+        .service(web::resource("/week/{date}").route(web::get().to(meal::get_meal_week_date)));
 }
