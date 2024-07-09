@@ -5,6 +5,7 @@ pipeline {
         CONTAINER_NAME = 'dimigomeal-api'
         IMAGE_NAME = 'dimigomeal/dimigomeal-api'
         IMAGE_VERSION = 'latest'
+        IMAGE_URL = "ghcr.io/${env.IMAGE_NAME}:${env.IMAGE_VERSION}"
     }
     
     stages {
@@ -17,7 +18,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("ghcr.io/${env.IMAGE_NAME}:${env.IMAGE_VERSION}")
+                    docker.build(${env.IMAGE_URL})
                 }
             }
         }
@@ -26,7 +27,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://ghcr.io', 'ghcr') {
-                        docker.image("ghcr.io/${env.IMAGE_NAME}:${env.IMAGE_VERSION}").push()
+                        docker.image(${env.IMAGE_URL}).push()
                     }
                 }
             }
@@ -49,7 +50,7 @@ pipeline {
                         --network proxy \
                         --volume /mnt/docker/services/dimigomeal/db.db3:/db.db3 \
                         --volume /mnt/docker/services/dimigomeal/ios-activity.p8:/ios-activity.p8:ro \
-                        ${env.IMAGE_NAME}:${env.IMAGE_VERSION}"
+                        ${env.IMAGE_URL}"
                     sh "docker start ${env.CONTAINER_NAME}"
                 }
             }
