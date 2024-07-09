@@ -2,10 +2,13 @@ pipeline {
     agent any
     
     environment {
+        GIT_COMMIT_SHORT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
         CONTAINER_NAME = 'dimigomeal-api'
+        REGISTRY_URL = 'ghcr.io'
+
         IMAGE_NAME = 'dimigomeal/dimigomeal-api'
-        IMAGE_VERSION = 'latest'
-        IMAGE_URL = "ghcr.io/${env.IMAGE_NAME}:${env.IMAGE_VERSION}"
+        IMAGE_TAG = "${env.GIT_COMMIT_SHORT}-${env.BUILD_NUMBER}"
+        IMAGE_URL = "${env.REGISTRY_URL}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
     }
     
     stages {
@@ -15,7 +18,7 @@ pipeline {
             }
         }
         
-        stage('Build Docker Image') {
+        stage('Build Image') {
             steps {
                 script {
                     docker.build(env.IMAGE_URL)
@@ -23,11 +26,12 @@ pipeline {
             }
         }
         
-        stage('Push to GHCR') {
+        stage('Push Image') {
             steps {
                 script {
                     docker.withRegistry('https://ghcr.io', 'ghcr') {
                         docker.image(env.IMAGE_URL).push()
+                        docker.image(env.IMAGE_URL).push("latest")
                     }
                 }
             }
