@@ -1,5 +1,12 @@
-node('docker-agent') {
-    stage('Print Hello') {
-        echo "Hello"
+pipeline {
+    agent {
+        label 'docker-agent'
+    }
+    stages {
+        stage('Print Hello') {
+            steps {
+                sh 'echo "Hello"'
+            }
+        }
     }
 }
