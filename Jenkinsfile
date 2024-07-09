@@ -2,12 +2,11 @@ pipeline {
     agent any
     
     environment {
-        GIT_COMMIT_SHORT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
         CONTAINER_NAME = 'dimigomeal-api'
         REGISTRY_URL = 'ghcr.io'
 
         IMAGE_NAME = 'dimigomeal/dimigomeal-api'
-        IMAGE_TAG = "${env.GIT_COMMIT_SHORT}-${env.BUILD_ID}"
+        IMAGE_TAG = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
         IMAGE_URL = "${env.REGISTRY_URL}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
     }
     
