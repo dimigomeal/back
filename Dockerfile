@@ -16,3 +16,5 @@ RUN crontab /etc/cron.d/cron
 COPY run.sh /run.sh
 
 CMD ["sh", "run.sh"]
+
+LABEL org.opencontainers.image.source=https://github.com/dimigomeal/dimigomeal-back
