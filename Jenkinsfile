@@ -2,9 +2,6 @@ pipeline {
     agent any
     
     environment {
-        GITHUB_CREDENTIALS = credentials('github')
-        GHCR_CREDENTIALS = credentials('ghcr')
-
         IMAGE_NAME = 'dimigomeal/dimigomeal-api'
         IMAGE_VERSION = 'latest'
     }
@@ -33,11 +30,5 @@ pipeline {
                 }
             }
         }
-        
-        // stage('Deploy') {
-        //     steps {
-        //         sh './deploy.sh'
-        //     }
-        // }
     }
 }
