@@ -19,7 +19,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("ghcr.io/${IMAGE_NAME}:${IMAGE_VERSION}")
+                    docker.build("ghcr.io/${env.IMAGE_NAME}:${env.IMAGE_VERSION}")
                 }
             }
         }
@@ -27,8 +27,8 @@ pipeline {
         stage('Push to GHCR') {
             steps {
                 script {
-                    docker.withRegistry('https://ghcr.io', 'ghcr-credentials') {
-                        docker.image("ghcr.io/${IMAGE_NAME}:${IMAGE_VERSION}").push()
+                    docker.withRegistry('https://ghcr.io', env.GHCR_CREDENTIALS) {
+                        docker.image("ghcr.io/${env.IMAGE_NAME}:${env.IMAGE_VERSION}").push()
                     }
                 }
             }
