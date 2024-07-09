@@ -2,12 +2,12 @@ pipeline {
     agent any
     
     environment {
-        CONTAINER_NAME = 'dimigomeal-api'
         REGISTRY_URL = 'ghcr.io'
-
-        IMAGE_NAME = 'dimigomeal/dimigomeal-api'
+        IMAGE_NAME = sh(script: "echo ${env.GIT_URL} | sed -E 's/.*[:\\/](.*\\/.*)\\.git$/\\1/'", returnStdout: true).trim()
         IMAGE_TAG = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
         IMAGE_URL = "${env.REGISTRY_URL}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+
+        CONTAINER_NAME = sh(script: "echo ${env.IMAGE_NAME} | sed -E 's/\\//-/g'", returnStdout: true).trim()
     }
     
     stages {
