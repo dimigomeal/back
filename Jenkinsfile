@@ -27,7 +27,7 @@ pipeline {
         stage('Push to GHCR') {
             steps {
                 script {
-                    docker.withRegistry('https://ghcr.io', env.GHCR_CREDENTIALS) {
+                    docker.withRegistry('https://ghcr.io', 'ghcr') {
                         docker.image("ghcr.io/${env.IMAGE_NAME}:${env.IMAGE_VERSION}").push()
                     }
                 }
