@@ -18,7 +18,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build(${env.IMAGE_URL})
+                    docker.build(env.IMAGE_URL)
                 }
             }
         }
@@ -27,7 +27,7 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('https://ghcr.io', 'ghcr') {
-                        docker.image(${env.IMAGE_URL}).push()
+                        docker.image(env.IMAGE_URL).push()
                     }
                 }
             }
