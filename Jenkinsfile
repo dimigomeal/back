@@ -7,7 +7,7 @@ pipeline {
         REGISTRY_URL = 'ghcr.io'
 
         IMAGE_NAME = 'dimigomeal/dimigomeal-api'
-        IMAGE_TAG = "${env.GIT_COMMIT_SHORT}-${env.BUILD_NUMBER}"
+        IMAGE_TAG = "${env.GIT_COMMIT_SHORT}-${env.BUILD_ID}"
         IMAGE_URL = "${env.REGISTRY_URL}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
     }
     
