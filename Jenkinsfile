@@ -52,8 +52,8 @@ pipeline {
                         --name ${env.CONTAINER_NAME} \
                         --restart always \
                         --network proxy \
-                        --volume /mnt/data/services/dimigomeal/db.db3:/db.db3 \
-                        --volume /mnt/data/services/dimigomeal/ios-activity.p8:/ios-activity.p8:ro \
+                        --volume /mnt/docker/services/dimigomeal/db.db3:/db.db3 \
+                        --volume /mnt/docker/services/dimigomeal/ios-activity.p8:/ios-activity.p8:ro \
                         ${env.IMAGE_URL}"
                     sh "docker start ${env.CONTAINER_NAME}"
                 }
