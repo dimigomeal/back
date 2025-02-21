@@ -1,3 +1,4 @@
+use actix_cors::Cors;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use std::{io, result};
 
@@ -16,8 +17,12 @@ pub async fn index_handler() -> impl Responder {
 pub async fn run_server() -> result::Result<(), io::Error> {
     println!("Starting Actix web server...");
 
-    HttpServer::new(move || App::new().configure(index_config))
-        .bind(("0.0.0.0", 8080))?
-        .run()
-        .await
+    HttpServer::new(move || {
+        let cors = Cors::permissive();
+
+        App::new().wrap(cors).configure(index_config)
+    })
+    .bind(("0.0.0.0", 8080))?
+    .run()
+    .await
 }
