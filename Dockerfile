@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/rust:1.77-bullseye AS builder
+FROM public.ecr.aws/docker/library/rust:1.84-bullseye AS builder
 WORKDIR /usr/src/dimigomeal-back
 
 COPY . .
