@@ -121,10 +121,35 @@ fn parse_string(string: &str) -> String {
         .to_string()
 }
 
+fn fullwidth_to_halfwidth(input: &str) -> String {
+    input
+        .chars()
+        .map(|c| {
+            if ('０'..='９').contains(&c) {
+                // 유니코드 전각 숫자(0xFF10~0xFF19)를 아라비아 숫자 형태로 변환
+                std::char::from_u32(c as u32 - 0xFF10 + '0' as u32).unwrap()
+            } else {
+                c
+            }
+        })
+        .collect()
+}
+
 fn parse_number(string: &str) -> i32 {
+    let s = fullwidth_to_halfwidth(string);
     let number_regex = Regex::new(r"\d+").unwrap();
-    let number_string = number_regex.find(string).unwrap().as_str();
-    number_string.parse().unwrap()
+
+    if let Some(mat) = number_regex.find(&s) {
+        if let Ok(num) = mat.as_str().parse() {
+            num
+        } else {
+            println!("숫자 파싱 실패: {}", mat.as_str());
+            0
+        }
+    } else {
+        println!("숫자 없음: {}", string);
+        0
+    }
 }
 
 fn split_string(string: &str, split: &str) -> Vec<String> {
